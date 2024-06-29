@@ -2,6 +2,9 @@
 import React, { useState, useCallback, useMemo } from "react";
 import styles from "./page.module.css";
 
+const BASE_URL = "http://10.10.1.124:8000";
+// const BASE_URL = "http://127.0.0.1:8000";
+
 export default function Home() {
   const [images, setImages] = useState<File[]>([]);
   const [processedImages, setProcessedImages] = useState<string[]>([]);
@@ -31,7 +34,7 @@ export default function Home() {
           const formData = new FormData();
           formData.append("file", image, image.name);
           console.log(image.type);
-          const response = await fetch("http://10.10.1.124:8000/predict/", {
+          const response = await fetch(`${BASE_URL}/predict/`, {
             method: "POST",
             body: formData,
           });
