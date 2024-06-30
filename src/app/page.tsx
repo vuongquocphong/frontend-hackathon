@@ -2,8 +2,8 @@
 import React, { useState, useCallback, useMemo } from "react";
 import styles from "./page.module.css";
 
-const BASE_URL = "http://10.10.1.124:8000";
-// const BASE_URL = "http://127.0.0.1:8000";
+// const BASE_URL = "http://10.10.1.124:8000";
+const BASE_URL = "http://127.0.0.1:8000";
 
 export default function Home() {
   const [images, setImages] = useState<File[]>([]);
@@ -42,7 +42,7 @@ export default function Home() {
           console.log(data);
           return drawBoundingBoxes(image, data.predictions);
         })
-      )
+      );
       setProcessedImages(processed);
     } catch (error) {
       console.error("Error processing images:", error);
@@ -64,15 +64,79 @@ export default function Home() {
             ctx.drawImage(img, 0, 0);
 
             // Draw bounding boxes
-            predictions.forEach((predictionGroup) => {
-              predictionGroup.forEach((prediction: { box: { x1: any; y1: any; x2: any; y2: any; }; }) => {
+            const drawnTextPositions: any[] = [];
+            predictions.forEach(
+              (prediction: {
+                name: string;
+                brand: string;
+                box: { x1: any; y1: any; x2: any; y2: any };
+              }) => {
                 const { x1, y1, x2, y2 } = prediction.box;
                 ctx.strokeStyle = "red";
                 ctx.lineWidth = 2;
                 ctx.strokeRect(x1, y1, x2 - x1, y2 - y1);
-              });
-            });
 
+                // Draw label
+                ctx.font = "16px Arial";
+                ctx.fillStyle = "yellow";
+
+                let textX = x1;
+                let textY = y2 + 20;
+
+                // New code to prevent text from going out of bounds on the x-axis
+                const text = `Type: ${prediction.name}, Brand: ${prediction.brand}`;
+                const textWidth = ctx.measureText(text).width;
+                const textHeight = 20;
+
+                // Function to check overlap
+                const isOverlapping = (
+                  x: number,
+                  y: number,
+                  width: number,
+                  height: number
+                ) =>
+                  drawnTextPositions.some(
+                    (pos) =>
+                      x < pos.x + pos.width + 10 &&
+                      x + width + 10 > pos.x &&
+                      y < pos.y + pos.height &&
+                      y + height > pos.y
+                  );
+
+                // Check if text goes out of bounds and adjust
+                const canvasHeight = ctx.canvas.height;
+                if (textY + 20 > canvasHeight) {
+                  // Assuming 20px is the approximate height of the text
+                  textY = y1 - 10; // Move text above the bounding box if it goes out of bounds
+                  // Ensure textY does not become negative
+                  if (textY < 0) textY = 10; // Place it near the top of the canvas
+                }
+
+                const canvasWidth = ctx.canvas.width;
+                if (textX + textWidth > canvasWidth) {
+                  textX = canvasWidth - textWidth - 10; // Adjust textX to prevent overflow, 10 is a margin
+                  // Ensure textX does not become negative
+                  if (textX < 0) textX = 10; // Place it near the start of the canvas if adjustment makes it negative
+                }
+                // Adjust textY to avoid overlap
+                while (isOverlapping(textX, textY, textWidth, textHeight)) {
+                  textY += 20; // Move text down by 20 pixels
+                }
+
+                drawnTextPositions.push({
+                  x: textX,
+                  y: textY,
+                  width: textWidth,
+                  height: textHeight,
+                });
+
+                ctx.fillText(
+                  `Type: ${prediction.name}, Brand: ${prediction.brand}`,
+                  textX,
+                  textY
+                );
+              }
+            );
             resolve(canvas.toDataURL());
           } else {
             reject(new Error("Canvas context is not available"));
