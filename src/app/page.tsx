@@ -7,7 +7,9 @@ const BASE_URL = "http://127.0.0.1:8000";
 
 export default function Home() {
   const [images, setImages] = useState<File[]>([]);
-  const [processedImages, setProcessedImages] = useState<string[]>([]);
+  const [processedImages, setProcessedImages] = useState<
+    { url: string; context: string }[]
+  >([]);
 
   const handleDrop = useCallback((event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault();
@@ -40,7 +42,8 @@ export default function Home() {
           });
           const data = await response.json();
           console.log(data);
-          return drawBoundingBoxes(image, data.predictions);
+          const processedImageUrl = await drawBoundingBoxes(image, data.predictions);
+          return { url: processedImageUrl, context: data.context };
         })
       );
       setProcessedImages(processed);
@@ -170,13 +173,14 @@ export default function Home() {
 
   const processedImagePreviews = useMemo(
     () =>
-      processedImages.map((image, index) => (
+      processedImages.map((processedImage, index) => (
         <div key={index} className={styles.preview}>
           <img
-            src={image}
+            src={processedImage.url}
             alt={`Processed ${index}`}
             className={styles.previewImage}
           />
+          <p className={styles.contextText}>{processedImage.context}</p>
         </div>
       )),
     [processedImages]
